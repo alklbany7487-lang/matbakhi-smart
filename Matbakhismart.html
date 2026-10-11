@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مطبخي الذكي v4.0</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@latest"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root{
+    --bg:#f4f8f6; --card:#fff; --text:#173b35; --muted:#5a7a72;
+    --primary:#159272; --primary-dark:#0d7a5f; --border:#e3eee9;
+    --danger:#e35d5d; --warning:#f0a04b; --success:#159272;
+}
+[data-theme="dark"]{
+    --bg:#0f1e1a; --card:#1a2e28; --text:#e8f5f1; --muted:#8aaba3;
+    --primary:#2eb896; --border:#2a4038;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;transition:background .3s,color .3s}
+.app{max-width:1200px;margin:auto;padding:22px}
+
+header{
+    background:linear-gradient(135deg,#0e8068,#36a987);
+    color:white;border-radius:24px;padding:28px;
+    display:flex;justify-content:space-between;align-items:center;
+    box-shadow:0 10px 30px #164b3b22;flex-wrap:wrap;gap:15px;
+}
+.logo{font-size:34px;font-weight:bold}
+.subtitle{margin-top:8px;opacity:.9;font-size:15px}
+.header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ai-badge{background:#ffffff22;border:1px solid #ffffff55;padding:10px 16px;border-radius:16px;font-size:13px}
+.theme-btn{
+    background:#ffffff22;border:1px solid #ffffff55;color:white;
+    width:44px;height:44px;border-radius:12px;cursor:pointer;font-size:20px;
+    position:relative;transition:transform .2s;
+}
+.theme-btn:hover{transform:scale(1.05)}
+
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+nav button{
+    border:0;background:var(--card);color:var(--text);padding:11px 15px;
+    border-radius:14px;cursor:pointer;font-size:13.5px;font-weight:600;
+    box-shadow:0 4px 14px #173b3512;transition:all .2s;
+}
+nav button:hover{transform:translateY(-2px)}
+nav button.active{background:var(--primary);color:white}
+
+.page{display:none;animation:fadeIn .3s}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}
+
+.card{background:var(--card);border-radius:20px;padding:22px;box-shadow:0 5px 20px #173b3510;margin-bottom:18px}
+.card h2{margin-bottom:15px;color:var(--primary);font-size:20px}
+.card h3{color:var(--primary);font-size:16px;margin-bottom:8px}
+
+.hero{background:linear-gradient(135deg,#e8f7ef,#fff);border:1px solid #cfeade}
+[data-theme="dark"] .hero{background:linear-gradient(135deg,#1a2e28,#0f1e1a);border-color:#2a4038}
+
+.stat-card{background:var(--card);border-radius:18px;padding:20px;box-shadow:0 5px 20px #173b3510;text-align:center}
+.stat-card .num{font-size:32px;font-weight:bold;color:var(--primary);display:block}
+.stat-card .lbl{color:var(--muted);font-size:14px;margin-top:5px}
+
+.item{display:flex;justify-content:space-between;align-items:center;padding:14px 12px;border-bottom:1px solid var(--border);gap:12px}
+.item:last-child{border-bottom:0}
+.item-info{flex:1}
+.item-name{font-weight:600}
+.item-meta{font-size:12px;color:var(--muted);margin-top:3px}
+
+.badge{padding:6px 12px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.green{background:#e1f6eb;color:#087653}
+.orange{background:#fff0d9;color:#9a5a00}
+.red{background:#ffe4e4;color:#a22d2d}
+.blue{background:#e0efff;color:#155a9e}
+[data-theme="dark"] .green{background:#0d3d2e;color:#5fd3ab}
+[data-theme="dark"] .orange{background:#4a3316;color:#f5c078}
+[data-theme="dark"] .red{background:#4a1a1a;color:#f08a8a}
+[data-theme="dark"] .blue{background:#153050;color:#7ab8f0}
+
+.recipe{background:var(--card);border-radius:16px;padding:16px;margin:10px 0;border:1px solid var(--border)}
+.recipe h3{margin:0 0 8px}
+
+.btn{
+    border:0;background:var(--primary);color:white;padding:11px 20px;
+    border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;
+    transition:all .2s;margin:5px 3px;display:inline-flex;align-items:center;gap:6px;
+}
+.btn:hover{background:var(--primary-dark);transform:translateY(-1px)}
+.btn.secondary{background:#e9f5f1;color:var(--primary)}
+[data-theme="dark"] .btn.secondary{background:#2a4038;color:#5fd3ab}
+.btn.danger{background:var(--danger)}
+.btn.small{padding:7px 14px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+input,select,textarea{
+    width:100%;padding:12px;border:1px solid var(--border);
+    border-radius:12px;margin:6px 0 12px;font-size:14px;font-family:inherit;
+    background:var(--card);color:var(--text);
+}
+input:focus,select:focus{outline:none;border-color:var(--primary)}
+label{font-weight:600;font-size:14px;color:var(--muted)}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+.ai{border-right:5px solid var(--primary);background:linear-gradient(90deg,#f0fbf7,var(--card))}
+[data-theme="dark"] .ai{background:linear-gradient(90deg,#1a3d30,var(--card))}
+.priority-high{border-right:5px solid var(--danger)}
+.priority-mid{border-right:5px solid var(--warning)}
+.priority-low{border-right:5px solid var(--primary)}
+
+.chart-box{position:relative;height:260px;margin-top:15px}
+.empty{text-align:center;color:var(--muted);padding:30px;font-style:italic}
+
+.toast{
+    position:fixed;top:20px;left:50%;transform:translateX(-50%);
+    background:var(--primary);color:white;padding:14px 24px;border-radius:12px;
+    box-shadow:0 8px 25px #0003;z-index:9999;opacity:0;transition:opacity .3s;
+    font-weight:600;max-width:90vw;text-align:center;
+}
+.toast.show{opacity:1}
+
+footer{text-align:center;color:var(--muted);padding:25px;font-size:14px}
+.tag{display:inline-block;background:#e9f5f1;color:var(--primary);padding:4px 10px;border-radius:8px;font-size:12px;margin:2px}
+[data-theme="dark"] .tag{background:#2a4038;color:#5fd3ab}
+
+.camera-container{position:relative;background:#000;border-radius:16px;overflow:hidden;margin:15px 0}
+#cameraVideo{width:100%;display:block;max-height:400px;object-fit:cover}
+.camera-overlay{position:absolute;top:0;left:0;right:0;bottom:0;border:3px solid transparent;transition:border-color .3s}
+.camera-overlay.active{border-color:#00ff88;box-shadow:inset 0 0 40px #00ff8844}
+.detection-result{background:var(--card);border-radius:14px;padding:15px;margin-top:15px;border:2px dashed var(--border)}
+.detection-result.found{border-color:var(--primary);border-style:solid;background:#e9f5f1}
+[data-theme="dark"] .detection-result.found{background:#1a3d30}
+
+.confidence-bar{height:8px;background:#e0e0e0;border-radius:4px;overflow:hidden;margin-top:8px}
+.confidence-fill{height:100%;background:var(--primary);transition:width .5s}
+
+.voice-btn{
+    position:fixed;bottom:30px;left:30px;width:70px;height:70px;
+    border-radius:50%;background:var(--primary);color:white;border:0;
+    font-size:32px;cursor:pointer;box-shadow:0 8px 25px #15927266;
+    z-index:1000;transition:all .3s;
+}
+.voice-btn:hover{transform:scale(1.1)}
+.voice-btn.listening{animation:pulse 1.5s infinite;background:var(--danger)}
+@keyframes pulse{
+    0%,100%{box-shadow:0 0 0 0 #e35d5d88}
+    50%{box-shadow:0 0 0 25px #e35d5d00}
+}
+.voice-result{
+    position:fixed;bottom:115px;left:30px;background:var(--card);
+    padding:14px 20px;border-radius:14px;box-shadow:0 5px 20px #0003;
+    max-width:300px;z-index:999;display:none;
+}
+.voice-result.show{display:block}
+
+.model-loading{display:none;text-align:center;padding:20px;background:var(--card);border-radius:14px;margin:15px 0}
+.model-loading.show{display:block}
+.spinner{width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.achievement-popup{
+    position:fixed;top:100px;right:-400px;background:linear-gradient(135deg,#f0a04b,#e08020);
+    color:white;padding:20px 25px;border-radius:18px;box-shadow:0 10px 40px #f0a04b66;
+    z-index:9999;transition:right .5s cubic-bezier(.68,-.55,.27,1.55);
+    display:flex;align-items:center;gap:15px;max-width:350px;
+}
+.achievement-popup.show{right:20px}
+.achievement-popup .ach-icon{font-size:40px}
+.achievement-popup .ach-info h4{margin:0;font-size:16px}
+.achievement-popup .ach-info p{margin:5px 0 0;font-size:13px;opacity:.9}
+
+@media(max-width:750px){
+    .grid,.grid-3,.grid-4,.form-row,.form-row-3{grid-template-columns:1fr}
+    header{display:block;text-align:center}
+    .header-actions{justify-content:center;margin-top:15px}
+    .logo{font-size:26px}
+    .voice-btn{width:60px;height:60px;font-size:26px;bottom:20px;left:20px}
+    nav button{font-size:12px;padding:9px 12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div>
+    <div class="logo">🏠 مطبخي الذكي</div>
+    <div class="subtitle">نظام ذكي متكامل: كاميرا AI + صوت + تنبيهات + إنجازات</div>
+  </div>
+  <div class="header-actions">
+    <div class="ai-badge">🧠 AI v4.0</div>
+    <button class="theme-btn" onclick="showNotifications()" id="notifBtn" title="التنبيهات">
+      🔔
+      <span id="notifCount" style="position:absolute;top:-5px;right:-5px;background:#e35d5d;color:white;font-size:11px;min-width:18px;height:18px;border-radius:50%;display:none;align-items:center;justify-content:center;font-weight:bold;padding:0 4px">0</span>
+    </button>
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn" title="الوضع الليلي">🌙</button>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="showPage('home',this)">🏠 الرئيسية</button>
+  <button onclick="showPage('family',this)">👨‍👩‍👧‍👦 الأسرة</button>
+  <button onclick="showPage('camera',this)">📷 كاميرا AI</button>
+  <button onclick="showPage('inventory',this)">🥫 المخزون</button>
+  <button onclick="showPage('meals',this)">🍽️ الوجبات</button>
+  <button onclick="showPage('week',this)">📅 التقويم</button>
+  <button onclick="showPage('shopping',this)">🛒 المشتريات</button>
+  <button onclick="showPage('achievements',this)">🏆 الإنجازات</button>
+  <button onclick="showPage('analytics',this)">📊 التحليلات</button>
+  <button onclick="showPage('about',this)">ℹ️ عن المشروع</button>
+</nav>
+
+<!-- ===== الرئيسية ===== -->
+<section id="home" class="page active">
+  <div class="card hero">
+    <h2>مرحباً بك 👋</h2>
+    <p>صوّر طعامك بالكاميرا، أو تحدّث بالأوامر الصوتية، وسيتولى النظام الباقي!</p>
+    <div style="margin-top:15px">
+      <button class="btn" onclick="runAnalysis()">🚀 التحليل الذكي</button>
+      <button class="btn secondary" onclick="showPage('camera',document.querySelectorAll('nav button')[2])">📷 افتح الكاميرا</button>
+    </div>
+  </div>
+  <div class="grid-4">
+    <div class="stat-card"><span class="num" id="statMembers">0</span><span class="lbl">👨‍👩‍👧‍👦 أفراد الأسرة</span></div>
+    <div class="stat-card"><span class="num" id="statItems">0</span><span class="lbl">🥫 مواد بالمخزون</span></div>
+    <div class="stat-card"><span class="num" id="statExpiring">0</span><span class="lbl">⚠️ قريبة من التلف</span></div>
+    <div class="stat-card"><span class="num" id="statShopping">0</span><span class="lbl">🛒 مشتريات مقترحة</span></div>
+  </div>
+  <div class="card ai" id="todaySuggestion">
+    <h2>💡 اقتراح اليوم</h2>
+    <p class="empty">اضغط "التحليل الذكي" لتظهر الاقتراحات.</p>
+  </div>
+</section>
+
+<!-- ===== الأسرة ===== -->
+<section id="family" class="page">
+  <div class="card">
+    <h2>👨‍👩‍👧‍👦 معلومات الأسرة</h2>
+    <div class="form-row">
+      <div><label>عدد أفراد الأسرة</label><input id="members" type="number" min="1" value="4"></div>
+      <div><label>الميزانية الأسبوعية (ريال عماني)</label><input id="budget" type="number" min="0" value="30"></div>
+    </div>
+    <label>الأطعمة المفضلة</label>
+    <input id="liked" value="الدجاج، السمك، الأرز، الخضروات">
+    <label>أطعمة لا تفضلها الأسرة</label>
+    <input id="disliked" value="لا يوجد">
+    <label>عدد الوجبات اليومية</label>
+    <select id="mealsPerDay">
+      <option value="3" selected>3 وجبات</option>
+      <option value="2">وجبتان</option>
+      <option value="4">4 وجبات</option>
+    </select>
+    <button class="btn" onclick="saveFamily()">💾 حفظ</button>
+  </div>
+</section>
+
+<!-- ===== كاميرا AI ===== -->
+<section id="camera" class="page">
+  <div class="card">
+    <h2>📷 كاميرا التعرف على الطعام (AI)</h2>
+    <p style="color:var(--muted);margin-bottom:15px">
+      وجّه الكاميرا نحو الطعام، وسيتعرّف عليه النظام تلقائياً ويقترح إضافته للمخزون.
+    </p>
+
+    <div class="model-loading" id="modelLoading">
+      <div class="spinner"></div>
+      <p style="margin-top:12px">⏳ جارٍ تحميل نموذج AI... (10-20 ثانية أول مرة)</p>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px">
+      <button class="btn" id="startCamBtn" onclick="startCamera()">▶️ تشغيل الكاميرا</button>
+      <button class="btn danger" id="stopCamBtn" onclick="stopCamera()" disabled>⏹️ إيقاف</button>
+      <button class="btn secondary" onclick="capturePhoto()" id="captureBtn" disabled>📸 التقاط وتحليل</button>
+      <button class="btn secondary" onclick="uploadImage()">📁 رفع صورة</button>
+      <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFileUpload(event)">
+    </div>
+
+    <div class="camera-container">
+      <video id="cameraVideo" autoplay playsinline muted></video>
+      <div class="camera-overlay" id="camOverlay"></div>
+    </div>
+
+    <canvas id="captureCanvas" style="display:none"></canvas>
+
+    <div class="detection-result" id="detectionResult">
+      <h3>🔍 نتائج التعرف</h3>
+      <p class="empty">لم يتم التحليل بعد.</p>
+    </div>
+  </div>
+
+  <div class="card ai">
+    <h2>💡 كيف تعمل الكاميرا الذكية؟</h2>
+    <ul style="margin-right:20px;line-height:2">
+      <li>📸 تلتقط الكاميرا صورة للطعام</li>
+      <li>🧠 يعالجها نموذج <b>COCO-SSD</b> داخل متصفحك</li>
+      <li>🎯 يتعرف على 80 نوعاً من الأشياء مع نسبة الثقة</li>
+      <li>🥫 تُقترح المطابقة مع قاعدة بيانات الأطعمة</li>
+    </ul>
+    <p style="margin-top:10px;color:var(--muted);font-size:13px">
+      🔒 <b>خصوصية كاملة:</b> كل المعالجة تحدث داخل متصفحك.
+    </p>
+  </div>
+</section>
+
+<!-- ===== المخزون ===== -->
+<section id="inventory" class="page">
+  <div class="card">
+    <h2>➕ إضافة مادة</h2>
+    <div class="form-row-3">
+      <div><label>الاسم</label><input id="itemName" placeholder="حليب"></div>
+      <div><label>الكمية</label><input id="itemQty" type="number" min="0" step="0.1" value="1"></div>
+      <div><label>الوحدة</label>
+        <select id="itemUnit">
+          <option>حبة</option><option>كغ</option><option>غرام</option>
+          <option>لتر</option><option>علبة</option><option>كيس</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>تاريخ الصلاحية</label><input id="itemExpiry" type="date"></div>
+      <div><label>الفئة</label>
+        <select id="itemCategory">
+          <option value="protein">بروتين</option>
+          <option value="dairy">ألبان</option>
+          <option value="grain">حبوب</option>
+          <option value="veg">خضروات</option>
+          <option value="fruit">فواكه</option>
+          <option value="other">أخرى</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="addItem()">＋ إضافة</button>
+    <button class="btn secondary" onclick="loadSampleData()">📦 بيانات تجريبية</button>
+  </div>
+
+  <div class="card">
+    <h2>🥫 المخزون الحالي</h2>
+    <div id="inventoryList"></div>
+  </div>
+</section>
+
+<!-- ===== الوجبات ===== -->
+<section id="meals" class="page">
+  <div class="card">
+    <h2>🍽️ خطة الوجبات الذكية</h2>
+    <button class="btn" onclick="generateMeals()">🔄 توليد الخطة</button>
+    <div id="mealsOutput" style="margin-top:18px"></div>
+  </div>
+</section>
+
+<!-- ===== التقويم الأسبوعي ===== -->
+<section id="week" class="page">
+  <div class="card">
+    <h2>📅 خطة الوجبات الأسبوعية</h2>
+    <p style="color:var(--muted);margin-bottom:15px">يولّد النظام خطة 7 أيام بناءً على مخزونك وتفضيلاتك.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" onclick="generateWeekPlan()">🔄 توليد الخطة</button>
+      <button class="btn secondary" onclick="exportWeekPDF()">📄 تصدير PDF</button>
+      <button class="btn secondary" onclick="shareWeekWhatsApp()">📱 مشاركة واتساب</button>
+    </div>
+    <div id="weekOutput" style="margin-top:18px"></div>
+  </div>
+</section>
+
+<!-- ===== المشتريات ===== -->
+<section id="shopping" class="page">
+  <div class="card">
+    <h2>🛒 قائمة المشتريات</h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" onclick="generateShopping()">🛒 توليد القائمة</button>
+      <button class="btn secondary" onclick="exportPDF()">📄 تصدير PDF</button>
+      <button class="btn secondary" onclick="shareShoppingWhatsApp()">📱 مشاركة واتساب</button>
+      <button class="btn danger" onclick="clearShopping()">🗑️ تفريغ</button>
+    </div>
+    <div id="shoppingOutput" style="margin-top:18px"></div>
+  </div>
+</section>
+
+<!-- ===== الإنجازات ===== -->
+<section id="achievements" class="page">
+  <div class="card ai">
+    <h2>🏆 لوحة الإنجازات والنقاط</h2>
+    <p style="color:var(--muted);margin-bottom:15px">كلما استخدمت النظام بذكاء، تكسب نقاطاً وتفتح إنجازات!</p>
+    <div id="achievementsStats"></div>
+  </div>
+  <div class="card">
+    <h2>🎖️ الإنجازات المتاحة</h2>
+    <div id="achievementsList"></div>
+  </div>
+</section>
+
+<!-- ===== التحليلات ===== -->
+<section id="analytics" class="page">
+  <div class="card">
+    <h2>📊 المخزون حسب الصلاحية</h2>
+    <div class="chart-box"><canvas id="chartExpiry"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>🥗 التوزيع حسب الفئة</h2>
+    <div class="chart-box"><canvas id="chartCategory"></canvas></div>
+  </div>
+  <div class="card ai">
+    <h2>📈 مؤشرات الأداء</h2>
+    <div id="kpis"></div>
+  </div>
+</section>
+
+<!-- ===== عن المشروع ===== -->
+<section id="about" class="page">
+  <div class="card">
+    <h2>🎯 عن المشروع</h2>
+    <p><b>المشكلة:</b> يُهدر ما يقارب 30% من الطعام في المنازل.</p>
+    <br>
+    <p><b>الحل:</b> نظام ذكي متعدد التقنيات:</p>
+    <ul style="margin:10px 25px;line-height:2">
+      <li>📷 <b>كاميرا AI</b> للتعرف التلقائي على الطعام</li>
+      <li>🧠 <b>محرك أولويات</b> رياضي</li>
+      <li>🎤 <b>أوامر صوتية</b> عربية</li>
+      <li>📅 <b>تقويم أسبوعي</b> للوجبات</li>
+      <li>🔔 <b>تنبيهات ذكية</b> فورية</li>
+      <li>🏆 <b>نظام إنجازات</b> تحفيزي</li>
+      <li>📊 <b>تحليلات بيانية</b> فورية</li>
+      <li>📄 <b>تقارير PDF</b> + مشاركة واتساب</li>
+    </ul>
+    <br>
+    <h3>🔬 التقنيات المستخدمة</h3>
+    <p>
+      <span class="tag">TensorFlow.js</span>
+      <span class="tag">COCO-SSD</span>
+      <span class="tag">Web Speech API</span>
+      <span class="tag">Chart.js</span>
+      <span class="tag">jsPDF</span>
+      <span class="tag">localStorage</span>
+      <span class="tag">WhatsApp API</span>
+    </p>
+    <br>
+    <h3>📐 المعادلة الرياضية</h3>
+    <p><code>Priority = expiryFactor × 0.6 + qtyFactor × 0.25 + preferenceScore × 0.15</code></p>
+    <br>
+    <h3>🎯 الفئة المستهدفة</h3>
+    <p>الأسر العمانية والخليجية.</p>
+    <br>
+    <h3>📈 الأثر المتوقع</h3>
+    <p>تقليل هدر الطعام بنسبة 20-30%، وتوفير مالي شهري.</p>
+  </div>
+</section>
+
+<footer>مطبخي الذكي v4.0 ©️ 2026 | نموذج ابتكار علمي متكامل</footer>
+</div>
+
+<!-- نافذة التنبيهات -->
+<div id="notifPanel" style="display:none;position:fixed;top:80px;left:20px;width:340px;max-width:90vw;background:var(--card);border-radius:18px;box-shadow:0 10px 40px #0004;z-index:9998;padding:18px;max-height:70vh;overflow-y:auto">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h3 style="margin:0;color:var(--primary)">🔔 التنبيهات الذكية</h3>
+    <button onclick="closeNotifications()" style="background:none;border:0;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+  </div>
+  <div id="notifList"></div>
+</div>
+
+<!-- زر الأوامر الصوتية -->
+<button class="voice-btn" id="voiceBtn" onclick="toggleVoice()" title="اضغط وتحدّث">🎤</button>
+<div class="voice-result" id="voiceResult"></div>
+
+<!-- نافذة الإنجاز -->
+<div class="achievement-popup" id="achPopup">
+  <div class="ach-icon" id="achIcon">🏆</div>
+  <div class="ach-info">
+    <h4 id="achTitle">إنجاز جديد!</h4>
+    <p id="achDesc"></p>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ================= إدارة البيانات ================= */
+const STORAGE_KEY = 'matbakhi_smart_v4';
+const STATS_KEY = 'matbakhi_stats_v4';
+
+const defaultData = {
+  family: { members: 4, budget: 30, liked: 'الدجاج، السمك، الأرز، الخضروات', disliked: '', mealsPerDay: 3 },
+  inventory: [
+    { id: 1, name: 'حليب', qty: 1, unit: 'لتر', expiry: daysFromNow(2), category: 'dairy' },
+    { id: 2, name: 'بيض', qty: 12, unit: 'حبة', expiry: daysFromNow(10), category: 'protein' },
+    { id: 3, name: 'دجاج', qty: 0.5, unit: 'كغ', expiry: daysFromNow(3), category: 'protein' },
+    { id: 4, name: 'طماطم', qty: 4, unit: 'حبة', expiry: daysFromNow(3), category: 'veg' },
+    { id: 5, name: 'أرز', qty: 1, unit: 'كغ', expiry: daysFromNow(180), category: 'grain' },
+    { id: 6, name: 'خبز', qty: 1, unit: 'كيس', expiry: daysFromNow(2), category: 'grain' },
+    { id: 7, name: 'خيار', qty: 2, unit: 'حبة', expiry: daysFromNow(5), category: 'veg' },
+    { id: 8, name: 'جبن', qty: 0.2, unit: 'كغ', expiry: daysFromNow(6), category: 'dairy' }
+  ],
+  shopping: []
+};
+
+let data = loadData();
+
+function daysFromNow(n) {
+  const d = new Date(); d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e){}
+  return JSON.parse(JSON.stringify(defaultData));
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function toast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || 'var(--primary)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ================= الوضع الليلي ================= */
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('matbakhi_theme', isDark ? 'light' : 'dark');
+  if (document.getElementById('analytics').classList.contains('active')) {
+    setTimeout(renderCharts, 100);
+  }
+}
+(function initTheme() {
+  const t = localStorage.getItem('matbakhi_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeBtn').textContent = t === 'dark' ? '☀️' : '🌙';
+})();
+
+/* ================= التنقل ================= */
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (id === 'analytics') setTimeout(renderCharts, 100);
+  if (id === 'achievements') renderAchievements();
+  if (id === 'inventory') renderInventory();
+}
+
+/* ================= المحرّك الذكي ================= */
+function calculatePriority(item) {
+  const today = new Date();
+  const exp = new Date(item.expiry);
+  const daysLeft = Math.max(0, Math.ceil((exp - today) / 86400000));
+  const maxQty = { 'حبة': 12, 'كغ': 2, 'غرام': 1000, 'لتر': 2, 'علبة': 5, 'كيس': 2 };
+  const max = maxQty[item.unit] || 5;
+  const qtyFactor = Math.min(item.qty / max, 1);
+  const liked = (data.family.liked || '').split(/[،,]/).map(s => s.trim());
+  let prefScore = 0;
+  if (liked.some(l => l && item.name.includes(l))) prefScore = 1;
+  if ((data.family.disliked || '').includes(item.name)) prefScore = -1;
+  const expiryFactor = daysLeft <= 2 ? 1 : daysLeft <= 5 ? 0.7 : daysLeft <= 14 ? 0.4 : 0.15;
+  return {
+    score: expiryFactor * 0.6 + qtyFactor * 0.25 + prefScore * 0.15,
+    daysLeft,
+    status: daysLeft <= 2 ? 'red' : daysLeft <= 7 ? 'orange' : 'green'
+  };
+}
+
+const RECIPES_DB = [
+  { name: 'دجاج مشوي مع أرز وخضروات', needs: ['دجاج', 'أرز', 'طماطم'], category: 'غداء' },
+  { name: 'بيض مقلي مع خبز', needs: ['بيض', 'خبز', 'طماطم'], category: 'فطور' },
+  { name: 'سلطة خضراء مع جبن', needs: ['خيار', 'طماطم', 'جبن'], category: 'عشاء' },
+  { name: 'أرز بالحليب', needs: ['أرز', 'حليب'], category: 'تحلية' },
+  { name: 'شكشوكة بالبيض', needs: ['بيض', 'طماطم'], category: 'فطور' },
+  { name: 'ساندويتش جبن وخيار', needs: ['خبز', 'جبن', 'خيار'], category: 'عشاء' },
+  { name: 'أرز مع دجاج', needs: ['أرز', 'دجاج'], category: 'غداء' },
+  { name: 'عجة بالخضروات', needs: ['بيض', 'طماطم', 'خيار'], category: 'فطور' },
+  { name: 'كبسة دجاج', needs: ['دجاج', 'أرز', 'طماطم'], category: 'غداء' }
+];
+
+function generateSmartMeals() {
+  const inventory = data.inventory.map(i => ({ ...i, ...calculatePriority(i) }));
+  const available = inventory.map(i => i.name);
+  return RECIPES_DB.filter(r =>
+    r.needs.every(n => available.some(a => a.includes(n) || n.includes(a)))
+  ).map(r => {
+    const usedItems = inventory.filter(i =>
+      r.needs.some(n => i.name.includes(n) || n.includes(i.name))
+    );
+    const avgScore = usedItems.reduce((s, i) => s + i.score, 0) / (usedItems.length || 1);
+    return { ...r, score: avgScore, usedItems };
+  }).sort((a, b) => b.score - a.score);
+}
+
+/* ================= المخزون ================= */
+function renderInventory() {
+  const list = document.getElementById('inventoryList');
+  if (!data.inventory.length) {
+    list.innerHTML = '<p class="empty">لا توجد مواد.</p>';
+    return;
+  }
+  const sorted = data.inventory.map(i => ({ ...i, ...calculatePriority(i) }))
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+
+  list.innerHTML = sorted.map(item => {
+    const label = item.status === 'red' ? `⚠️ ${item.daysLeft} يوم`
+                : item.status === 'orange' ? `⏰ ${item.daysLeft} يوم`
+                : `✅ ${item.daysLeft} يوم`;
+    return `
+      <div class="item">
+        <div class="item-info">
+          <div class="item-name">${item.name}</div>
+          <div class="item-meta">${item.qty} ${item.unit} • ${categoryName(item.category)} • أولوية: ${(item.score*100).toFixed(0)}%</div>
+        </div>
+        <span class="badge ${item.status}">${label}</span>
+        <button class="btn danger small" onclick="deleteItem(${item.id})">🗑️</button>
+      </div>`;
+  }).join('');
+}
+
+function categoryName(c) {
+  return { protein:'بروتين', dairy:'ألبان', grain:'حبوب', veg:'خضروات', fruit:'فواكه', other:'أخرى' }[c] || c;
+}
+
+function addItem() {
+  const name = document.getElementById('itemName').value.trim();
+  const qty = parseFloat(document.getElementById('itemQty').value);
+  const unit = document.getElementById('itemUnit').value;
+  const expiry = document.getElementById('itemExpiry').value || daysFromNow(30);
+  const category = document.getElementById('itemCategory').value;
+
+  if (!name || !qty || qty <= 0) {
+    toast('⚠️ اسم وكمية صحيحان مطلوبان', '#e35d5d');
+    return;
+  }
+
+  const before = data.inventory.length;
+  data.inventory.push({ id: Date.now(), name, qty, unit, expiry, category });
+  saveData();
+  renderInventory();
+  updateHomeStats();
+  document.getElementById('itemName').value = '';
+  document.getElementById('itemQty').value = '1';
+  document.getElementById('itemExpiry').value = '';
+  toast('✓ تمت الإضافة');
+
+  if (data.inventory.length > before) {
+    unlockAchievement('first_item');
+    if (data.inventory.length >= 10) unlockAchievement('ten_items');
+  }
+  updateNotifBadge();
+}
+
+function deleteItem(id) {
+  if (!confirm('حذف هذه المادة؟')) return;
+  data.inventory = data.inventory.filter(i => i.id !== id);
+  saveData();
+  renderInventory();
+  updateHomeStats();
+  updateNotifBadge();
+  toast('🗑️ تم الحذف');
+}
+
+function loadSampleData() {
+  data.inventory = JSON.parse(JSON.stringify(defaultData.inventory));
+  saveData();
+  renderInventory();
+  updateHomeStats();
+  updateNotifBadge();
+  toast('📦 تم التحميل');
+}
+
+function saveFamily() {
+  data.family = {
+    members: parseInt(document.getElementById('members').value) || 4,
+    budget: parseFloat(document.getElementById('budget').value) || 30,
+    liked: document.getElementById('liked').value,
+    disliked: document.getElementById('disliked').value,
+    mealsPerDay: parseInt(document.getElementById('mealsPerDay').value)
+  };
+  saveData();
+  updateHomeStats();
+  toast('✓ تم الحفظ');
+}
+
+function loadFamilyUI() {
+  document.getElementById('members').value = data.family.members;
+  document.getElementById('budget').value = data.family.budget;
+  document.getElementById('liked').value = data.family.liked;
+  document.getElementById('disliked').value = data.family.disliked;
+  document.getElementById('mealsPerDay').value = data.family.mealsPerDay;
+}
+
+function updateHomeStats() {
+  document.getElementById('statMembers').textContent = data.family.members;
+  document.getElementById('statItems').textContent = data.inventory.length;
+  const expiring = data.inventory.filter(i => calculatePriority(i).daysLeft <= 3).length;
+  document.getElementById('statExpiring').textContent = expiring;
+  document.getElementById('statShopping').textContent = data.shopping.length;
+}
+
+/* ================= الوجبات ================= */
+function generateMeals() {
+  const meals = generateSmartMeals();
+  const out = document.getElementById('mealsOutput');
+  if (!meals.length) {
+    out.innerHTML = '<p class="empty">لا توجد وصفات ممكنة.</p>';
+    return;
+  }
+  const byCat = { 'فطور': [], 'غداء': [], 'عشاء': [], 'تحلية': [] };
+  meals.forEach(m => { if (byCat[m.category]) byCat[m.category].push(m); });
+
+  let html = '';
+  Object.entries(byCat).forEach(([cat, list]) => {
+    if (!list.length) return;
+    const top = list[0];
+    const emoji = { 'فطور':'🌅', 'غداء':'☀️', 'عشاء':'🌙', 'تحلية':'🍰' }[cat];
+    html += `
+      <div class="recipe priority-${top.score > 0.6 ? 'high' : top.score > 0.3 ? 'mid' : 'low'}">
+        <h3>${emoji} ${cat}: ${top.name}</h3>
+        <p><b>المكونات:</b> ${top.needs.join(' • ')}</p>
+        <p><b>الأولوية:</b> ${(top.score*100).toFixed(0)}%</p>
+        <div>${top.usedItems.map(u => `<span class="tag">${u.name} (${u.daysLeft} يوم)</span>`).join('')}</div>
+      </div>`;
+  });
+  out.innerHTML = html;
+  unlockAchievement('meal_plan');
+  toast('🍽️ تم توليد الخطة');
+}
+
+/* ================= المشتريات ================= */
+const ESSENTIALS = [
+  { name: 'حليب', unit: 'لتر', qty: 2, price: 1.2 },
+  { name: 'خبز', unit: 'كيس', qty: 1, price: 0.5 },
+  { name: 'خيار', unit: 'حبة', qty: 3, price: 0.3 },
+  { name: 'طماطم', unit: 'حبة', qty: 4, price: 0.25 },
+  { name: 'بيض', unit: 'حبة', qty: 12, price: 2.5 },
+  { name: 'موز', unit: 'حبة', qty: 6, price: 0.2 },
+  { name: 'خس', unit: 'حبة', qty: 1, price: 0.4 },
+  { name: 'دجاج', unit: 'كغ', qty: 1, price: 3.5 },
+  { name: 'أرز', unit: 'كغ', qty: 2, price: 1.8 },
+  { name: 'جبن', unit: 'كغ', qty: 0.3, price: 2.0 }
+];
+
+function generateShopping() {
+  const available = data.inventory.map(i => i.name);
+  const lowStock = data.inventory.filter(i => i.qty < 1 || calculatePriority(i).daysLeft <= 2);
+  const lowNames = lowStock.map(i => i.name);
+
+  let suggested = ESSENTIALS.filter(e =>
+    !available.some(a => a.includes(e.name) || e.name.includes(a)) ||
+    lowNames.some(l => l.includes(e.name) || e.name.includes(l))
+  );
+
+  const budget = data.family.budget;
+  let total = 0;
+  const final = [];
+  const excluded = [];
+  suggested.forEach(s => {
+    const cost = s.qty * s.price;
+    if (total + cost <= budget) {
+      final.push({ ...s, cost });
+      total += cost;
+    } else excluded.push(s);
+  });
+
+  data.shopping = final;
+  saveData();
+  updateHomeStats();
+
+  const out = document.getElementById('shoppingOutput');
+  let html = '';
+  if (final.length) {
+    html += `<h3>✅ مواد مقترحة (${final.length})</h3>`;
+    html += final.map((s, idx) => `
+      <div class="item">
+        <input type="checkbox" style="width:auto;margin:0" id="chk${idx}">
+        <div class="item-info">
+          <div class="item-name">${s.name} — ${s.qty} ${s.unit}</div>
+          <div class="item-meta">${s.cost.toFixed(2)} ريال</div>
+        </div>
+        <span class="badge ${lowNames.includes(s.name) ? 'red' : 'green'}">
+          ${lowNames.includes(s.name) ? 'ناقص' : 'مقترح'}
+        </span>
+      </div>
+    `).join('');
+    html += `<div class="recipe" style="background:#e9f5f1;margin-top:15px">
+      <b>💰 الإجمالي: ${total.toFixed(2)} ريال</b> من ${budget} ريال
+    </div>`;
+  } else {
+    html += '<p class="empty">لا حاجة لمشتريات — المخزون جيد!</p>';
+  }
+  if (excluded.length) {
+    html += `<div class="recipe"><b>⚠️ تجاوزت الميزانية:</b><br>${excluded.map(e => `<span class="tag">${e.name}</span>`).join('')}</div>`;
+  }
+  out.innerHTML = html;
+  unlockAchievement('shopping');
+  updateNotifBadge();
+  toast('🛒 تم التوليد');
+}
+
+function clearShopping() {
+  data.shopping = [];
+  saveData();
+  updateHomeStats();
+  document.getElementById('shoppingOutput').innerHTML = '';
+  toast('🗑️ تم التفريغ');
+}
+
+/* ================= تصدير PDF ================= */
+function exportPDF() {
+  if (!data.shopping.length) {
+    toast('⚠️ لا توجد قائمة للتصدير', '#e35d5d');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(22);
+  doc.text('Smart Kitchen - Shopping List', 105, 25, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text('Matbakhi Smart - v4.0', 105, 33, { align: 'center' });
+
+  doc.setFontSize(14);
+  doc.text('Date: ' + new Date().toLocaleDateString(), 20, 50);
+  doc.text('Family: ' + data.family.members + ' members', 20, 58);
+  doc.text('Weekly Budget: ' + data.family.budget + ' OMR', 20, 66);
+
+  let y = 82;
+  doc.setFontSize(14);
+  doc.text('Items:', 20, y);
+  y += 10;
+
+  let total = 0;
+  data.shopping.forEach((s, i) => {
+    const line = `${i+1}. ${s.name} - ${s.qty} ${s.unit} - ${s.cost.toFixed(2)} OMR`;
+    doc.setFontSize(11);
+    doc.text(line, 25, y);
+    total += s.cost;
+    y += 8;
+  });
+
+  y += 6;
+  doc.setFontSize(13);
+  doc.text('TOTAL: ' + total.toFixed(2) + ' OMR', 20, y);
+  y += 15;
+  doc.setFontSize(10);
+  doc.text('Generated by Matbakhi Smart (AI-powered)', 20, y);
+
+  doc.save('matbakhi-shopping-list.pdf');
+  unlockAchievement('pdf_export');
+  toast('📄 تم تصدير PDF');
+}
+
+/* ================= التحليل الشامل ================= */
+function runAnalysis() {
+  const meals = generateSmartMeals();
+  const expiring = data.inventory.map(i => ({ ...i, ...calculatePriority(i) }))
+    .filter(i => i.daysLeft <= 3)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+
+  const out = document.getElementById('todaySuggestion');
+  let html = '<h2>💡 اقتراح اليوم (AI)</h2>';
+
+  if (expiring.length) {
+    html += `<div class="recipe priority-high">
+      <h3>⚠️ ابدأ بهذه المواد:</h3>
+      <p>${expiring.map(e => `<span class="tag">${e.name} (${e.daysLeft} يوم)</span>`).join('')}</p>
+    </div>`;
+  }
+  if (meals.length) {
+    const top = meals[0];
+    html += `<div class="recipe priority-high">
+      <h3>🍽️ الوصفة الموصى بها: ${top.name}</h3>
+      <p><b>المكونات:</b> ${top.needs.join(' • ')}</p>
+      <p><b>الأولوية:</b> ${(top.score*100).toFixed(0)}%</p>
+    </div>`;
+  }
+  html += `<div class="recipe">
+    <h3>📊 ملخص</h3>
+    <ul style="margin-right:18px">
+      <li>إجمالي المواد: <b>${data.inventory.length}</b></li>
+      <li>قريبة من التلف: <b>${expiring.length}</b></li>
+      <li>وصفات ممكنة: <b>${meals.length}</b></li>
+    </ul>
+  </div>`;
+  out.innerHTML = html;
+  toast('🧠 تم التحليل');
+}
+
+/* ================= الرسوم ================= */
+let charts = {};
+function renderCharts() {
+  const expiring = data.inventory.filter(i => calculatePriority(i).daysLeft <= 3).length;
+  const soon = data.inventory.filter(i => {
+    const d = calculatePriority(i).daysLeft;
+    return d > 3 && d <= 7;
+  }).length;
+  const ok = data.inventory.length - expiring - soon;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = isDark ? '#e8f5f1' : '#173b35';
+
+  if (charts.expiry) charts.expiry.destroy();
+  charts.expiry = new Chart(document.getElementById('chartExpiry'), {
+    type: 'doughnut',
+    data: {
+      labels: ['≤ 3 أيام', '4-7 أيام', 'صالح'],
+      datasets: [{ data: [expiring, soon, ok], backgroundColor: ['#e35d5d', '#f0a04b', '#159272'] }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: textColor } } }
+    }
+  });
+
+  const cats = {};
+  data.inventory.forEach(i => {
+    const c = categoryName(i.category);
+    cats[c] = (cats[c] || 0) + 1;
+  });
+  if (charts.category) charts.category.destroy();
+  charts.category = new Chart(document.getElementById('chartCategory'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(cats),
+      datasets: [{ label: 'عدد المواد', data: Object.values(cats), backgroundColor: '#159272' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor } },
+        y: { ticks: { color: textColor } }
+      }
+    }
+  });
+
+  const util = data.inventory.length ? ((data.inventory.length - expiring) / data.inventory.length * 100).toFixed(0) : 0;
+  document.getElementById('kpis').innerHTML = `
+    <div class="grid-3">
+      <div class="stat-card"><span class="num">${util}%</span><span class="lbl">مخزون آمن</span></div>
+      <div class="stat-card"><span class="num">${expiring}</span><span class="lbl">تحتاج استهلاكاً فورياً</span></div>
+      <div class="stat-card"><span class="num">${data.shopping.length}</span><span class="lbl">في المشتريات</span></div>
+    </div>`;
+}
+
+/* ================= كاميرا AI ================= */
+let cocoModel = null;
+let currentStream = null;
+let modelReady = false;
+
+async function loadModel() {
+  if (modelReady) return true;
+  const loadingEl = document.getElementById('modelLoading');
+  loadingEl.classList.add('show');
+  try {
+    cocoModel = await cocoSsd.load();
+    modelReady = true;
+    loadingEl.classList.remove('show');
+    toast('🧠 تم تحميل نموذج AI بنجاح');
+    return true;
+  } catch(e) {
+    loadingEl.classList.remove('show');
+    toast('⚠️ فشل تحميل النموذج — تحقق من الإنترنت', '#e35d5d');
+    return false;
+  }
+}
+
+async function startCamera() {
+  try {
+    const ok = await loadModel();
+    if (!ok) return;
+    currentStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: 640, height: 480 }
+    });
+    const video = document.getElementById('cameraVideo');
+    video.srcObject = currentStream;
+    document.getElementById('startCamBtn').disabled = true;
+    document.getElementById('stopCamBtn').disabled = false;
+    document.getElementById('captureBtn').disabled = false;
+    document.getElementById('camOverlay').classList.add('active');
+    toast('📷 الكاميرا تعمل');
+  } catch(e) {
+    toast('⚠️ لا يمكن الوصول للكاميرا — اسمح بالإذن', '#e35d5d');
+    console.error(e);
+  }
+}
+
+function stopCamera() {
+  if (currentStream) {
+    currentStream.getTracks().forEach(t => t.stop());
+    currentStream = null;
+  }
+  document.getElementById('startCamBtn').disabled = false;
+  document.getElementById('stopCamBtn').disabled = true;
+  document.getElementById('captureBtn').disabled = true;
+  document.getElementById('camOverlay').classList.remove('active');
+  toast('⏹️ تم الإيقاف');
+}
+
+async function capturePhoto() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('captureCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  await analyzeImage(canvas);
+}
+
+function uploadImage() {
+  document.getElementById('fileInput').click();
+}
+
+async function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const ok = await loadModel();
+  if (!ok) return;
+  const img = new Image();
+  img.onload = async () => {
+    const canvas = document.getElementById('captureCanvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    await analyzeImage(canvas);
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+const FOOD_MAP = {
+  'banana': { ar: 'موز', category: 'fruit', unit: 'حبة' },
+  'apple': { ar: 'تفاح', category: 'fruit', unit: 'حبة' },
+  'orange': { ar: 'برتقال', category: 'fruit', unit: 'حبة' },
+  'broccoli': { ar: 'بروكلي', category: 'veg', unit: 'حبة' },
+  'carrot': { ar: 'جزر', category: 'veg', unit: 'حبة' },
+  'sandwich': { ar: 'ساندويتش', category: 'grain', unit: 'حبة' },
+  'pizza': { ar: 'بيتزا', category: 'grain', unit: 'حبة' },
+  'hot dog': { ar: 'هوت دوغ', category: 'protein', unit: 'حبة' },
+  'donut': { ar: 'دونات', category: 'other', unit: 'حبة' },
+  'cake': { ar: 'كيك', category: 'other', unit: 'حبة' },
+  'bottle': { ar: 'قارورة (حليب/ماء)', category: 'dairy', unit: 'علبة' },
+  'bowl': { ar: 'طبق/وعاء طعام', category: 'other', unit: 'حبة' },
+  'cup': { ar: 'كوب', category: 'other', unit: 'حبة' }
+};
+
+async function analyzeImage(canvas) {
+  const resultDiv = document.getElementById('detectionResult');
+  resultDiv.innerHTML = '<h3>🔍 جارٍ التحليل...</h3><div class="spinner" style="margin:15px auto"></div>';
+
+  try {
+    const predictions = await cocoModel.detect(canvas);
+    const foods = predictions.filter(p => p.score > 0.4);
+
+    if (!foods.length) {
+      resultDiv.innerHTML = `
+        <h3>🔍 نتائج التعرف</h3>
+        <p class="empty">لم يتعرف النظام على طعام واضح.</p>`;
+      return;
+    }
+
+    foods.sort((a, b) => b.score - a.score);
+    const top = foods[0];
+    const info = FOOD_MAP[top.class] || { ar: top.class, category: 'other', unit: 'حبة' };
+
+    resultDiv.classList.add('found');
+    resultDiv.innerHTML = `
+      <h3>✅ تم التعرف على: <b style="color:var(--primary);font-size:20px">${info.ar}</b></h3>
+      <p style="color:var(--muted);margin:8px 0">
+        الكلمة الأصلية: <b>${top.class}</b> • الفئة: <b>${categoryName(info.category)}</b>
+      </p>
+      <div class="confidence-bar">
+        <div class="confidence-fill" style="width:${(top.score*100).toFixed(0)}%"></div>
+      </div>
+      <p style="margin-top:8px;font-size:13px">نسبة الثقة: <b>${(top.score*100).toFixed(1)}%</b></p>
+      ${foods.length > 1 ? `
+        <p style="margin-top:15px"><b>اكتشافات أخرى:</b></p>
+        <p>${foods.slice(1, 4).map(f => {
+          const i2 = FOOD_MAP[f.class] || { ar: f.class };
+          return `<span class="tag">${i2.ar} (${(f.score*100).toFixed(0)}%)</span>`;
+        }).join('')}</p>
+      ` : ''}
+      <div style="margin-top:15px">
+        <label>الكمية:</label>
+        <input type="number" id="detectedQty" value="1" min="0.1" step="0.1" style="max-width:150px;display:inline-block">
+        <label style="margin-right:12px">تاريخ الصلاحية:</label>
+        <input type="date" id="detectedExpiry" value="${daysFromNow(7)}" style="max-width:200px;display:inline-block">
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn" onclick="addDetected('${info.ar.replace(/'/g, "")}', '${info.unit}', '${info.category}')">
+          ✅ أضف للمخزون
+        </button>
+        <button class="btn secondary" onclick="discardDetection()">❌ تجاهل</button>
+      </div>
+    `;
+    unlockAchievement('camera_used');
+    toast('🎯 تم التعرف: ' + info.ar);
+  } catch(e) {
+    resultDiv.innerHTML = '<h3>⚠️ حدث خطأ أثناء التحليل</h3>';
+    console.error(e);
+  }
+}
+
+function addDetected(name, unit, category) {
+  const qty = parseFloat(document.getElementById('detectedQty').value) || 1;
+  const expiry = document.getElementById('detectedExpiry').value || daysFromNow(7);
+  data.inventory.push({ id: Date.now(), name, qty, unit, expiry, category });
+  saveData();
+  renderInventory();
+  updateHomeStats();
+  updateNotifBadge();
+  unlockAchievement('first_item');
+  toast('✅ تمت الإضافة للمخزون');
+  document.getElementById('detectionResult').classList.remove('found');
+}
+
+function discardDetection() {
+  document.getElementById('detectionResult').innerHTML = `
+    <h3>🔍 نتائج التعرف</h3>
+    <p class="empty">جاهز للالتقاط التالي...</p>`;
+  document.getElementById('detectionResult').classList.remove('found');
+}
+
+/* ================= الأوامر الصوتية ================= */
+let recognition = null;
+let isListening = false;
+
+function initVoice() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    toast('⚠️ متصفحك لا يدعم الأوامر الصوتية', '#e35d5d');
+    return false;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'ar-SA';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    isListening = true;
+    document.getElementById('voiceBtn').classList.add('listening');
+    showVoiceResult('🎤 أتحدث...');
+  };
+
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript;
+    showVoiceResult('🗣️ سمعتك: "' + transcript + '"');
+    handleVoiceCommand(transcript);
+  };
+
+  recognition.onerror = () => {
+    showVoiceResult('⚠️ خطأ في الاستماع');
+    stopListening();
+  };
+
+  recognition.onend = () => stopListening();
+  return true;
+}
+
+function toggleVoice() {
+  if (!recognition && !initVoice()) return;
+  if (isListening) recognition.stop();
+  else try { recognition.start(); } catch(e){}
+}
+
+function stopListening() {
+  isListening = false;
+  document.getElementById('voiceBtn').classList.remove('listening');
+  setTimeout(() => {
+    document.getElementById('voiceResult').classList.remove('show');
+  }, 4000);
+}
+
+function showVoiceResult(msg) {
+  const el = document.getElementById('voiceResult');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function handleVoiceCommand(text) {
+  const t = text.trim();
+  unlockAchievement('voice_used');
+
+  const addMatch = t.match(/(?:أضف|اضف|ضيف)\s+(.+?)(?:\s+(\d+))?$/);
+  if (addMatch) {
+    const name = addMatch[1].replace(/\d+/g,'').trim();
+    const qty = parseInt(addMatch[2]) || 1;
+    if (name) {
+      data.inventory.push({
+        id: Date.now(), name, qty, unit: 'حبة',
+        expiry: daysFromNow(7), category: guessCategory(name)
+      });
+      saveData();
+      renderInventory();
+      updateHomeStats();
+      updateNotifBadge();
+      unlockAchievement('first_item');
+      toast('✅ أضيف: ' + name);
+      speak('تمت إضافة ' + name);
+      return;
+    }
+  }
+
+  if (/مخزون|المخزون|شو عندي|عندي ايش/i.test(t)) {
+    showPage('inventory', document.querySelectorAll('nav button')[3]);
+    speak('لديك ' + data.inventory.length + ' مادة في المخزون');
+    return;
+  }
+
+  if (/وجبة|وجبات|آكل|اكل|اطبخ/i.test(t)) {
+    showPage('meals', document.querySelectorAll('nav button')[4]);
+    setTimeout(generateMeals, 300);
+    speak('تم توليد خطة الوجبات');
+    return;
+  }
+
+  if (/أسبوع|اسبوع|تقويم/i.test(t)) {
+    showPage('week', document.querySelectorAll('nav button')[5]);
+    setTimeout(generateWeekPlan, 300);
+    speak('تم توليد خطة الأسبوع');
+    return;
+  }
+
+  if (/مشتريات|تسوق|اشتري/i.test(t)) {
+    showPage('shopping', document.querySelectorAll('nav button')[6]);
+    setTimeout(generateShopping, 300);
+    speak('تم توليد قائمة المشتريات');
+    return;
+  }
+
+  if (/حلل|تحليل|اقترح/i.test(t)) {
+    runAnalysis();
+    speak('تم التحليل الذكي');
+    return;
+  }
+
+  if (/كاميرا|صوّر|صور|التقط/i.test(t)) {
+    showPage('camera', document.querySelectorAll('nav button')[2]);
+    speak('افتح الكاميرا واضغط تشغيل');
+    return;
+  }
+
+  showVoiceResult('❓ لم أفهم. جرّب: "أضف حليب" أو "اقترح وجبات"');
+}
+
+function guessCategory(name) {
+  const map = {
+    dairy: ['حليب','لبن','جبن','زبدة','قشطة','روب'],
+    protein: ['دجاج','لحم','سمك','بيض','تونة'],
+    grain: ['أرز','خبز','معكرونة','مكرونة','طحين','شوفان'],
+    veg: ['طماطم','خيار','خس','جزر','بصل','ثوم','بطاطس','كوسا'],
+    fruit: ['موز','تفاح','برتقال','عنب','مانجو','بطيخ']
+  };
+  for (const [cat, words] of Object.entries(map)) {
+    if (words.some(w => name.includes(w))) return cat;
+  }
+  return 'other';
+}
+
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ar-SA';
+  u.rate = 1;
+  speechSynthesis.speak(u);
+}
+
+/* ================= التنبيهات الذكية ================= */
+function checkNotifications() {
+  const alerts = [];
+  data.inventory.forEach(item => {
+    const p = calculatePriority(item);
+    if (p.daysLeft <= 1) {
+      alerts.push({
+        type: 'danger', icon: '🚨',
+        title: `${item.name} ينتهي اليوم!`,
+        body: `استخدمه فوراً. الكمية: ${item.qty} ${item.unit}`,
+        action: 'اظهر الوصفات', page: 'meals'
+      });
+    } else if (p.daysLeft <= 3) {
+      alerts.push({
+        type: 'warning', icon: '⚠️',
+        title: `${item.name} ينتهي خلال ${p.daysLeft} يوم`,
+        body: `يُنصح بتحضيره قريباً.`,
+        action: 'عرض الوجبات', page: 'meals'
+      });
+    }
+  });
+
+  if (data.shopping.length) {
+    const total = data.shopping.reduce((s, i) => s + i.cost, 0);
+    if (total > data.family.budget * 0.8) {
+      alerts.push({
+        type: 'warning', icon: '💰',
+        title: `الميزانية شبه منتهية`,
+        body: `صرفت ${total.toFixed(2)} من ${data.family.budget} ريال.`,
+        action: 'راجع المشتريات', page: 'shopping'
+      });
+    }
+  }
+
+  if (data.inventory.length < 3) {
+    alerts.push({
+      type: 'info', icon: '📦',
+      title: 'المخزون فارغ تقريباً',
+      body: 'أضف مواد أو استخدم الكاميرا.',
+      action: 'افتح الكاميرا', page: 'camera'
+    });
+  }
+
+  return alerts;
+}
+
+function updateNotifBadge() {
+  const alerts = checkNotifications();
+  const badge = document.getElementById('notifCount');
+  if (alerts.length) {
+    badge.textContent = alerts.length;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function showNotifications() {
+  const panel = document.getElementById('notifPanel');
+  const list = document.getElementById('notifList');
+  const alerts = checkNotifications();
+
+  if (!alerts.length) {
+    list.innerHTML = '<p class="empty">✅ لا توجد تنبيهات — كل شيء ممتاز!</p>';
+  } else {
+    list.innerHTML = alerts.map(a => `
+      <div class="recipe priority-${a.type === 'danger' ? 'high' : a.type === 'warning' ? 'mid' : 'low'}" style="margin:8px 0">
+        <h3 style="font-size:15px">${a.icon} ${a.title}</h3>
+        <p style="font-size:13px;color:var(--muted);margin:5px 0">${a.body}</p>
+        <button class="btn small" onclick="closeNotifications();gotoPage('${a.page}')">
+          ${a.action}
+        </button>
+      </div>
+    `).join('');
+  }
+  panel.style.display = 'block';
+}
+
+function gotoPage(id) {
+  const map = { home:0, family:1, camera:2, inventory:3, meals:4, week:5, shopping:6, achievements:7, analytics:8, about:9 };
+  const btn = document.querySelectorAll('nav button')[map[id]];
+  showPage(id, btn);
+}
+
+function closeNotifications() {
+  document.getElementById('notifPanel').style.display = 'none';
+}
+
+setInterval(updateNotifBadge, 60000);
+
+/* ================= التقويم الأسبوعي ================= */
+const DAYS_AR = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+function generateWeekPlan() {
+  const meals = generateSmartMeals();
+  if (!meals.length) {
+    document.getElementById('weekOutput').innerHTML = '<p class="empty">لا توجد وصفات كافية.</p>';
+    return;
+  }
+
+  const byCat = { 'فطور': [], 'غداء': [], 'عشاء': [], 'تحلية': [] };
+  meals.forEach(m => { if (byCat[m.category]) byCat[m.category].push(m); });
+
+  const today = new Date();
+  let html = '<div class="grid-3">';
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    const dayName = i === 0 ? 'اليوم' : i === 1 ? 'غداً' : DAYS_AR[date.getDay()];
+    const isWeekend = date.getDay() === 5 || date.getDay() === 6;
+
+    const breakfast = byCat['فطور'][i % Math.max(1, byCat['فطور'].length)];
+    const lunch = byCat['غداء'][i % Math.max(1, byCat['غداء'].length)];
+    const dinner = byCat['عشاء'][i % Math.max(1, byCat['عشاء'].length)];
+
+    html += `
+      <div class="card" style="padding:15px;margin-bottom:0;${isWeekend ? 'border:2px solid var(--primary)' : ''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h3 style="margin:0;font-size:15px">${dayName}</h3>
+          <small style="color:var(--muted)">${date.getDate()}/${date.getMonth()+1}</small>
+        </div>
+        ${breakfast ? `<p style="font-size:12px;margin:5px 0">🌅 <b>${breakfast.name}</b></p>` : ''}
+        ${lunch ? `<p style="font-size:12px;margin:5px 0">☀️ <b>${lunch.name}</b></p>` : ''}
+        ${dinner ? `<p style="font-size:12px;margin:5px 0">🌙 <b>${dinner.name}</b></p>` : ''}
+      </div>
+    `;
+  }
+  html += '</div>';
+  document.getElementById('weekOutput').innerHTML = html;
+  window._weekPlan = meals;
+  unlockAchievement('week_plan');
+  toast('📅 تم توليد الخطة الأسبوعية');
+}
+
+function exportWeekPDF() {
+  if (!window._weekPlan) {
+    toast('⚠️ ولّد الخطة أولاً', '#e35d5d');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(20);
+  doc.text('Weekly Meal Plan - Matbakhi Smart', 105, 20, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text('Family: ' + data.family.members + ' members', 20, 35);
+  doc.text('Date: ' + new Date().toLocaleDateString(), 20, 43);
+
+  const today = new Date();
+  let y = 60;
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    doc.setFontSize(13);
+    doc.text('Day ' + (i+1) + ' - ' + date.toLocaleDateString(), 20, y);
+    y += 7;
+    doc.setFontSize(10);
+    const m = window._weekPlan[i % window._weekPlan.length];
+    doc.text('  Main dish: ' + m.name, 25, y);
+    y += 10;
+    if (y > 270) { doc.addPage(); y = 20; }
+  }
+  doc.save('weekly-meal-plan.pdf');
+  unlockAchievement('pdf_export');
+  toast('📄 تم تصدير PDF');
+}
+
+/* ================= مشاركة واتساب ================= */
+function shareWeekWhatsApp() {
+  if (!window._weekPlan) {
+    toast('⚠️ ولّد الخطة أولاً', '#e35d5d');
+    return;
+  }
+  let msg = '🍽️ *خطة الوجبات الأسبوعية - مطبخي الذكي*\n\n';
+  const today = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today); d.setDate(today.getDate() + i);
+    msg += `📅 *${DAYS_AR[d.getDay()]}*\n`;
+    msg += `  • ${window._weekPlan[i % window._weekPlan.length].name}\n\n`;
+  }
+  msg += '✅ تم التوليد بواسطة مطبخي الذكي';
+  const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  window.open(url, '_blank');
+  unlockAchievement('whatsapp');
+  toast('📱 تم فتح واتساب');
+}
+
+function shareShoppingWhatsApp() {
+  if (!data.shopping.length) {
+    toast('⚠️ ولّد قائمة المشتريات أولاً', '#e35d5d');
+    return;
+  }
+  let msg = '🛒 *قائمة المشتريات - مطبخي الذكي*\n\n';
+  let total = 0;
+  data.shopping.forEach(s => {
+    msg += `☐ ${s.name} - ${s.qty} ${s.unit} (${s.cost.toFixed(2)} ر.ع)\n`;
+    total += s.cost;
+  });
+  msg += `\n💰 *الإجمالي:* ${total.toFixed(2)} ر.ع`;
+  const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  window.open(url, '_blank');
+  unlockAchievement('whatsapp');
+  toast('📱 تم فتح واتساب');
+}
+
+/* ================= الإنجازات والنقاط ================= */
+const ACHIEVEMENTS = [
+  { id: 'first_item', icon: '📦', name: 'البداية الموفقة', desc: 'أضف أول مادة للمخزون', points: 10 },
+  { id: 'ten_items', icon: '🥫', name: 'خزّان جيد', desc: '10 مواد في المخزون', points: 30 },
+  { id: 'camera_used', icon: '📷', name: 'العين الذكية', desc: 'استخدم الكاميرا للتعرف على الطعام', points: 25 },
+  { id: 'voice_used', icon: '🎤', name: 'الصوت الذكي', desc: 'استخدم الأمر الصوتي مرة', points: 20 },
+  { id: 'meal_plan', icon: '🍽️', name: 'الطاهي الذكي', desc: 'ولّد خطة وجبات', points: 15 },
+  { id: 'week_plan', icon: '📅', name: 'المخطط الأسبوعي', desc: 'ولّد خطة أسبوعية', points: 35 },
+  { id: 'shopping', icon: '🛒', name: 'المتسوق الذكي', desc: 'ولّد قائمة مشتريات', points: 15 },
+  { id: 'pdf_export', icon: '📄', name: 'الموثّق', desc: 'صدّر تقرير PDF', points: 20 },
+  { id: 'whatsapp', icon: '📱', name: 'المشارك', desc: 'شارك قائمة عبر واتساب', points: 15 },
+  { id: 'no_waste', icon: '🌿', name: 'حامي البيئة', desc: 'لا توجد مواد منتهية', points: 50 },
+  { id: 'weekly_streak', icon: '🔥', name: 'الاستمرارية', desc: 'استخدم النظام 7 أيام', points: 100 }
+];
+
+function getStats() {
+  try {
+    return JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+  } catch(e) { return {}; }
+}
+
+function saveStats(stats) {
+  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+}
+
+function unlockAchievement(id) {
+  const stats = getStats();
+  if (!stats.unlocked) stats.unlocked = [];
+  if (stats.unlocked.includes(id)) return;
+  stats.unlocked.push(id);
+  const ach = ACHIEVEMENTS.find(a => a.id === id);
+  stats.points = (stats.points || 0) + (ach?.points || 0);
+  saveStats(stats);
+  if (ach) showAchievementPopup(ach);
+  if (document.getElementById('achievements').classList.contains('active')) {
+    renderAchievements();
+  }
+}
+
+function showAchievementPopup(ach) {
+  const popup = document.getElementById('achPopup');
+  document.getElementById('achIcon').textContent = ach.icon;
+  document.getElementById('achTitle').textContent = '🏆 إنجاز جديد: ' + ach.name;
+  document.getElementById('achDesc').textContent = `+${ach.points} نقطة — ${ach.desc}`;
+  popup.classList.add('show');
+  setTimeout(() => popup.classList.remove('show'), 4500);
+}
+
+function renderAchievements() {
+  const stats = getStats();
+  const unlocked = stats.unlocked || [];
+  const points = stats.points || 0;
+  const level = Math.floor(points / 100) + 1;
+  const nextLevelPoints = level * 100;
+  const progress = ((points % 100) / 100) * 100;
+
+  document.getElementById('achievementsStats').innerHTML = `
+    <div class="grid-3">
+      <div class="stat-card">
+        <span class="num">${points}</span>
+        <span class="lbl">⭐ إجمالي النقاط</span>
+      </div>
+      <div class="stat-card">
+        <span class="num">${unlocked.length}/${ACHIEVEMENTS.length}</span>
+        <span class="lbl">🏆 الإنجازات</span>
+      </div>
+      <div class="stat-card">
+        <span class="num">L${level}</span>
+        <span class="lbl">🎯 المستوى</span>
+      </div>
+    </div>
+    <div style="margin-top:15px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+        <span>التقدم للمستوى ${level + 1}</span>
+        <span>${points % 100}/${nextLevelPoints}</span>
+      </div>
+      <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden">
+        <div style="height:100%;width:${progress}%;background:linear-gradient(90deg,var(--primary),#36a987);transition:width .5s"></div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('achievementsList').innerHTML = ACHIEVEMENTS.map(a => {
+    const done = unlocked.includes(a.id);
+    return `
+      <div class="item" style="opacity:${done ? 1 : 0.55}">
+        <div class="item-info">
+          <div class="item-name">${a.icon} ${a.name} ${done ? '✅' : '🔒'}</div>
+          <div class="item-meta">${a.desc}</div>
+        </div>
+        <span class="badge ${done ? 'green' : 'blue'}">+${a.points}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ================= فحص دوري للإنجازات ================= */
+setInterval(() => {
+  if (data.inventory.length > 0) {
+    const expired = data.inventory.filter(i => calculatePriority(i).daysLeft === 0);
+    if (expired.length === 0) unlockAchievement('no_waste');
+  }
+  const stats = getStats();
+  if (!stats.firstUse) {
+    stats.firstUse = new Date().toISOString();
+    saveStats(stats);
+  } else {
+    const days = Math.floor((Date.now() - new Date(stats.firstUse)) / 86400000);
+    if (days >= 7) unlockAchievement('weekly_streak');
+  }
+}, 10000);
+
+/* ================= التهيئة ================= */
+function init() {
+  loadFamilyUI();
+  renderInventory();
+  updateHomeStats();
+  updateNotifBadge();
+  renderAchievements();
+  document.addEventListener('click', (e) => {
+    const panel = document.getElementById('notifPanel');
+    const btn = document.getElementById('notifBtn');
+    if (panel.style.display === 'block' && !panel.contains(e.target) && !btn.contains(e.target)) {
+      panel.style.display = 'none';
+    }
+  });
+}
+init();
+</script>
+</body>
+</html>
